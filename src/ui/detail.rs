@@ -1,1 +1,254 @@
 //! Task detail panel
+//!
+//! Shows detailed information about the currently selected task or phase.
+
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph, Widget, Wrap},
+};
+
+use crate::data::state::DashboardState;
+use crate::data::tasks_parser::{ParsedPhase, ParsedTask, TaskStatus};
+
+/// What the detail panel is showing
+pub enum DetailContent<'a> {
+    Phase(&'a ParsedPhase),
+    Task(&'a ParsedTask, &'a str), // task + phase name
+    None,
+}
+
+/// The detail panel widget
+pub struct DetailWidget<'a> {
+    content: DetailContent<'a>,
+    focused: bool,
+}
+
+impl<'a> DetailWidget<'a> {
+    pub fn new(content: DetailContent<'a>, focused: bool) -> Self {
+        Self { content, focused }
+    }
+
+    pub fn from_selection(
+        state: &'a DashboardState,
+        selected_task: Option<(usize, usize)>,
+        selected_index: usize,
+        focused: bool,
+    ) -> Self {
+        let content = if let Some((pi, ti)) = selected_task {
+            let phase = &state.phases[pi];
+            DetailContent::Task(&phase.tasks[ti], &phase.name)
+        } else {
+            // Check if a phase header is selected
+            let mut idx = 0;
+            let mut found_phase = None;
+            for phase in &state.phases {
+                if idx == selected_index {
+                    found_phase = Some(phase);
+                    break;
+                }
+                idx += 1 + phase.tasks.len();
+            }
+            match found_phase {
+                Some(phase) => DetailContent::Phase(phase),
+                None => DetailContent::None,
+            }
+        };
+        Self { content, focused }
+    }
+
+    fn build_lines(&self) -> Vec<Line<'static>> {
+        match &self.content {
+            DetailContent::None => {
+                vec![Line::styled(
+                    "Select a task to view details",
+                    Style::default().fg(Color::DarkGray),
+                )]
+            }
+            DetailContent::Phase(phase) => {
+                let pct = (phase.progress() * 100.0) as u8;
+                let completed = phase
+                    .tasks
+                    .iter()
+                    .filter(|t| t.status == TaskStatus::Completed)
+                    .count();
+                vec![
+                    Line::from(vec![
+                        Span::styled("Phase: ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(
+                            format!("{} - {}", phase.id, phase.name),
+                            Style::default()
+                                .fg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+                    Line::raw(""),
+                    Line::from(vec![
+                        Span::styled("Progress: ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(
+                            format!("{completed}/{} ({pct}%)", phase.tasks.len()),
+                            Style::default().fg(Color::Green),
+                        ),
+                    ]),
+                    Line::from(vec![
+                        Span::styled("Tasks:    ", Style::default().fg(Color::DarkGray)),
+                        Span::raw(format!("{}", phase.tasks.len())),
+                    ]),
+                ]
+            }
+            DetailContent::Task(task, phase_name) => {
+                let status_str = format!("{:?}", task.status);
+                let status_color = match task.status {
+                    TaskStatus::Completed => Color::Green,
+                    TaskStatus::InProgress => Color::Yellow,
+                    TaskStatus::Pending => Color::DarkGray,
+                    TaskStatus::Failed => Color::Red,
+                    TaskStatus::Blocked => Color::Magenta,
+                };
+
+                let mut lines = vec![
+                    Line::from(vec![
+                        Span::styled("Task:   ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(
+                            task.id.clone(),
+                            Style::default()
+                                .fg(Color::White)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+                    Line::from(vec![
+                        Span::styled("Name:   ", Style::default().fg(Color::DarkGray)),
+                        Span::raw(task.name.clone()),
+                    ]),
+                    Line::from(vec![
+                        Span::styled("Phase:  ", Style::default().fg(Color::DarkGray)),
+                        Span::raw(phase_name.to_string()),
+                    ]),
+                    Line::from(vec![
+                        Span::styled("Status: ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(status_str, Style::default().fg(status_color)),
+                    ]),
+                ];
+
+                if let Some(ref agent) = task.agent {
+                    lines.push(Line::from(vec![
+                        Span::styled("Agent:  ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(format!("@{agent}"), Style::default().fg(Color::Blue)),
+                    ]));
+                }
+
+                if !task.blocked_by.is_empty() {
+                    lines.push(Line::from(vec![
+                        Span::styled("Deps:   ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(
+                            task.blocked_by.join(", "),
+                            Style::default().fg(Color::Magenta),
+                        ),
+                    ]));
+                }
+
+                lines
+            }
+        }
+    }
+}
+
+impl<'a> Widget for DetailWidget<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let border_style = if self.focused {
+            Style::default().fg(Color::Cyan)
+        } else {
+            Style::default().fg(Color::DarkGray)
+        };
+
+        let block = Block::default()
+            .title(" Detail ")
+            .borders(Borders::ALL)
+            .border_style(border_style);
+
+        let lines = self.build_lines();
+        let paragraph = Paragraph::new(lines)
+            .block(block)
+            .wrap(Wrap { trim: false });
+        paragraph.render(area, buf);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_state() -> DashboardState {
+        let input = include_str!("../../tests/fixtures/sample_tasks.md");
+        DashboardState::from_tasks_content(input).unwrap()
+    }
+
+    #[test]
+    fn detail_none_renders() {
+        let widget = DetailWidget::new(DetailContent::None, false);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut buf = Buffer::empty(area);
+        widget.render(area, &mut buf);
+    }
+
+    #[test]
+    fn detail_phase_renders() {
+        let state = sample_state();
+        let widget = DetailWidget::new(DetailContent::Phase(&state.phases[0]), true);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut buf = Buffer::empty(area);
+        widget.render(area, &mut buf);
+    }
+
+    #[test]
+    fn detail_task_renders() {
+        let state = sample_state();
+        let task = &state.phases[0].tasks[0];
+        let widget = DetailWidget::new(DetailContent::Task(task, "Setup"), true);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut buf = Buffer::empty(area);
+        widget.render(area, &mut buf);
+    }
+
+    #[test]
+    fn from_selection_task() {
+        let state = sample_state();
+        let widget = DetailWidget::from_selection(&state, Some((0, 0)), 1, true);
+        let lines = widget.build_lines();
+        assert!(lines.len() >= 4);
+    }
+
+    #[test]
+    fn from_selection_phase() {
+        let state = sample_state();
+        let widget = DetailWidget::from_selection(&state, None, 0, true);
+        let lines = widget.build_lines();
+        assert!(lines.len() >= 3);
+    }
+
+    #[test]
+    fn from_selection_none() {
+        let state = sample_state();
+        let widget = DetailWidget::from_selection(&state, None, 999, false);
+        let lines = widget.build_lines();
+        assert_eq!(lines.len(), 1);
+    }
+
+    #[test]
+    fn task_with_deps_shows_deps() {
+        let state = sample_state();
+        // Phase 1, task 0 has blocked_by
+        let task = &state.phases[1].tasks[0];
+        assert!(!task.blocked_by.is_empty());
+        let widget = DetailWidget::new(DetailContent::Task(task, "Data Engine"), false);
+        let lines = widget.build_lines();
+        let has_deps = lines.iter().any(|l| {
+            l.spans
+                .iter()
+                .any(|s| s.content.contains("Deps") || s.content.contains("P0-T0.1"))
+        });
+        assert!(has_deps);
+    }
+}

@@ -1,1 +1,87 @@
 //! Screen split layout
+//!
+//! Defines the main dashboard layout: task list (left), detail panel (right),
+//! and status bar (bottom).
+
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+
+/// The pane that currently has focus
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FocusedPane {
+    TaskList,
+    Detail,
+}
+
+impl FocusedPane {
+    pub fn toggle(self) -> Self {
+        match self {
+            Self::TaskList => Self::Detail,
+            Self::Detail => Self::TaskList,
+        }
+    }
+}
+
+/// Computed layout areas for the dashboard
+pub struct DashboardLayout {
+    pub task_list: Rect,
+    pub detail: Rect,
+    pub status_bar: Rect,
+}
+
+impl DashboardLayout {
+    /// Compute layout from terminal area
+    pub fn compute(area: Rect) -> Self {
+        let vertical = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(3), Constraint::Length(1)])
+            .split(area);
+
+        let horizontal = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+            .split(vertical[0]);
+
+        Self {
+            task_list: horizontal[0],
+            detail: horizontal[1],
+            status_bar: vertical[1],
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn focus_toggle() {
+        assert_eq!(FocusedPane::TaskList.toggle(), FocusedPane::Detail);
+        assert_eq!(FocusedPane::Detail.toggle(), FocusedPane::TaskList);
+    }
+
+    #[test]
+    fn layout_standard_size() {
+        let area = Rect::new(0, 0, 120, 40);
+        let layout = DashboardLayout::compute(area);
+        assert!(layout.task_list.width > 0);
+        assert!(layout.detail.width > 0);
+        assert_eq!(layout.status_bar.height, 1);
+        assert_eq!(layout.task_list.width + layout.detail.width, area.width);
+    }
+
+    #[test]
+    fn layout_small_size() {
+        let area = Rect::new(0, 0, 40, 10);
+        let layout = DashboardLayout::compute(area);
+        assert!(layout.task_list.width > 0);
+        assert!(layout.detail.width > 0);
+        assert_eq!(layout.status_bar.height, 1);
+    }
+
+    #[test]
+    fn layout_statusbar_at_bottom() {
+        let area = Rect::new(0, 0, 80, 30);
+        let layout = DashboardLayout::compute(area);
+        assert_eq!(layout.status_bar.y, area.height - 1);
+    }
+}
