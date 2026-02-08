@@ -38,6 +38,9 @@ Real-time visualization of Claude Code agent activity and task progress in your 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 
+# Windows — download and run the installer:
+# https://rustup.rs (rustup-init.exe)
+
 # Verify
 rustc --version
 ```
@@ -51,6 +54,9 @@ brew install node
 # Linux (via nvm - recommended)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 nvm install --lts
+
+# Windows — download the installer:
+# https://nodejs.org
 
 # Verify
 node --version

@@ -38,6 +38,9 @@
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 
+# Windows — 설치 프로그램 다운로드:
+# https://rustup.rs (rustup-init.exe)
+
 # 확인
 rustc --version
 ```
@@ -51,6 +54,9 @@ brew install node
 # Linux (nvm 권장)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 nvm install --lts
+
+# Windows — 설치 프로그램 다운로드:
+# https://nodejs.org
 
 # 확인
 node --version

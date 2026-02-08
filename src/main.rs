@@ -50,14 +50,21 @@ enum Commands {
     Init,
 }
 
+/// Get the user's home directory (cross-platform)
+fn home_dir() -> PathBuf {
+    std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."))
+}
+
 /// Resolve the hooks directory: .claude/hooks > ~/.claude/hooks
 fn resolve_hooks_path() -> PathBuf {
     let local = PathBuf::from(".claude/hooks");
     if local.is_dir() {
         return local;
     }
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let global = PathBuf::from(home).join(".claude").join("hooks");
+    let global = home_dir().join(".claude").join("hooks");
     if global.is_dir() {
         return global;
     }
@@ -117,10 +124,9 @@ fn run_tui(tasks_path: &str, hooks_dir: Option<&str>, events_dir: Option<&str>) 
         .unwrap_or_else(resolve_hooks_path);
 
     // Resolve events directory: CLI arg > default ~/.claude/dashboard
-    let events_path = events_dir.map(PathBuf::from).unwrap_or_else(|| {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join(".claude").join("dashboard")
-    });
+    let events_path = events_dir
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home_dir().join(".claude").join("dashboard"));
 
     // Load existing hook events at startup
     if hooks_path.is_dir() {
