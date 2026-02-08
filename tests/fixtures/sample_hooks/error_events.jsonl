@@ -1,0 +1,4 @@
+{"event_type":"agent_start","timestamp":"2026-02-08T11:00:00Z","agent_id":"backend-specialist-2","task_id":"P1-R3-T1","session_id":"sess-002"}
+{"event_type":"error","timestamp":"2026-02-08T11:00:30Z","agent_id":"backend-specialist-2","task_id":"P1-R3-T1","error_message":"permission denied: /etc/shadow","session_id":"sess-002"}
+{"event_type":"error","timestamp":"2026-02-08T11:01:00Z","agent_id":"backend-specialist-2","task_id":"P1-R3-T1","error_message":"connection refused: localhost:5432","session_id":"sess-002"}
+{"event_type":"agent_end","timestamp":"2026-02-08T11:01:30Z","agent_id":"backend-specialist-2","task_id":"P1-R3-T1","session_id":"sess-002"}

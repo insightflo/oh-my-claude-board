@@ -1,0 +1,5 @@
+{"event_type":"agent_start","timestamp":"2026-02-08T12:00:00Z","agent_id":"test-1","task_id":"T1","session_id":"sess-003"}
+this is not valid json
+{"event_type":"tool_start","timestamp":"2026-02-08T12:00:05Z","agent_id":"test-1","task_id":"T1","tool_name":"Bash","session_id":"sess-003"}
+{"incomplete_json": true
+{"event_type":"agent_end","timestamp":"2026-02-08T12:01:00Z","agent_id":"test-1","task_id":"T1","session_id":"sess-003"}

@@ -1,0 +1,6 @@
+{"event_type":"agent_start","timestamp":"2026-02-08T10:00:00Z","agent_id":"backend-specialist-1","task_id":"P1-R1-T1","session_id":"sess-001"}
+{"event_type":"tool_start","timestamp":"2026-02-08T10:00:05Z","agent_id":"backend-specialist-1","task_id":"P1-R1-T1","tool_name":"Read","session_id":"sess-001"}
+{"event_type":"tool_end","timestamp":"2026-02-08T10:00:06Z","agent_id":"backend-specialist-1","task_id":"P1-R1-T1","tool_name":"Read","session_id":"sess-001"}
+{"event_type":"tool_start","timestamp":"2026-02-08T10:00:10Z","agent_id":"backend-specialist-1","task_id":"P1-R1-T1","tool_name":"Write","session_id":"sess-001"}
+{"event_type":"tool_end","timestamp":"2026-02-08T10:00:15Z","agent_id":"backend-specialist-1","task_id":"P1-R1-T1","tool_name":"Write","session_id":"sess-001"}
+{"event_type":"agent_end","timestamp":"2026-02-08T10:01:00Z","agent_id":"backend-specialist-1","task_id":"P1-R1-T1","session_id":"sess-001"}
