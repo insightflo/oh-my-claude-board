@@ -5,9 +5,9 @@
 
 use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
 
-use oh_my_claude_board::app::App;
-use oh_my_claude_board::data::state::DashboardState;
-use oh_my_claude_board::ui::gantt::{GanttState, GanttWidget};
+use simple_claude_board::app::App;
+use simple_claude_board::data::state::DashboardState;
+use simple_claude_board::ui::gantt::{GanttState, GanttWidget};
 
 fn sample_state() -> DashboardState {
     let input = include_str!("fixtures/sample_tasks.md");

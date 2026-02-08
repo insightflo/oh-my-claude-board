@@ -6,18 +6,18 @@
 
 use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget, widgets::Widget};
 
-use oh_my_claude_board::app::App;
-use oh_my_claude_board::data::state::DashboardState;
-use oh_my_claude_board::data::tasks_parser::TaskStatus;
-use oh_my_claude_board::data::watcher::FileChange;
-use oh_my_claude_board::event::{key_to_action, Action};
-use oh_my_claude_board::ui::claude_output::AgentPanel;
-use oh_my_claude_board::ui::detail::DetailWidget;
-use oh_my_claude_board::ui::gantt::GanttWidget;
-use oh_my_claude_board::ui::help::HelpOverlay;
-use oh_my_claude_board::ui::layout::{DashboardLayout, FocusedPane};
-use oh_my_claude_board::ui::retry_modal::RetryModal;
-use oh_my_claude_board::ui::statusbar::StatusBar;
+use simple_claude_board::app::App;
+use simple_claude_board::data::state::DashboardState;
+use simple_claude_board::data::tasks_parser::TaskStatus;
+use simple_claude_board::data::watcher::FileChange;
+use simple_claude_board::event::{key_to_action, Action};
+use simple_claude_board::ui::claude_output::AgentPanel;
+use simple_claude_board::ui::detail::DetailWidget;
+use simple_claude_board::ui::gantt::GanttWidget;
+use simple_claude_board::ui::help::HelpOverlay;
+use simple_claude_board::ui::layout::{DashboardLayout, FocusedPane};
+use simple_claude_board::ui::retry_modal::RetryModal;
+use simple_claude_board::ui::statusbar::StatusBar;
 
 fn buffer_text(buf: &Buffer) -> String {
     let mut text = String::new();
@@ -138,7 +138,7 @@ fn hook_events_to_agent_panel() {
     let agent = app.dashboard.agents.get("main").unwrap();
     assert_eq!(
         agent.status,
-        oh_my_claude_board::data::state::AgentStatus::Running
+        simple_claude_board::data::state::AgentStatus::Running
     );
     assert_eq!(agent.current_tool.as_deref(), Some("Bash"));
 
@@ -193,7 +193,7 @@ fn error_to_retry_to_writeback() {
     let err = &app.dashboard.recent_errors[0];
     assert_eq!(
         err.category,
-        oh_my_claude_board::analysis::rules::ErrorCategory::Network
+        simple_claude_board::analysis::rules::ErrorCategory::Network
     );
     assert!(err.retryable);
 

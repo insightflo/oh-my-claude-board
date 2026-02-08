@@ -2,19 +2,19 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget, widgets::Widget};
 
-use oh_my_claude_board::data::state::DashboardState;
-use oh_my_claude_board::ui::claude_output::AgentPanel;
-use oh_my_claude_board::ui::detail::DetailWidget;
-use oh_my_claude_board::ui::gantt::{GanttState, GanttWidget};
-use oh_my_claude_board::ui::help::HelpOverlay;
-use oh_my_claude_board::ui::layout::DashboardLayout;
-use oh_my_claude_board::ui::statusbar::StatusBar;
+use simple_claude_board::data::state::DashboardState;
+use simple_claude_board::ui::claude_output::AgentPanel;
+use simple_claude_board::ui::detail::DetailWidget;
+use simple_claude_board::ui::gantt::{GanttState, GanttWidget};
+use simple_claude_board::ui::help::HelpOverlay;
+use simple_claude_board::ui::layout::DashboardLayout;
+use simple_claude_board::ui::statusbar::StatusBar;
 
 fn sample_state() -> DashboardState {
     let tasks_input = include_str!("../tests/fixtures/sample_tasks.md");
     let mut state = DashboardState::from_tasks_content(tasks_input).unwrap();
     let hooks_input = include_str!("../tests/fixtures/sample_hooks/agent_events.jsonl");
-    let result = oh_my_claude_board::data::hook_parser::parse_hook_events(hooks_input);
+    let result = simple_claude_board::data::hook_parser::parse_hook_events(hooks_input);
     state.update_from_events(&result.events);
     state
 }

@@ -1,11 +1,11 @@
 [package]
-name = "oh-my-claude-board"
+name = "simple-claude-board"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 description = "Claude Code orchestration TUI dashboard"
 license = "MIT"
-repository = "https://github.com/insightflo/oh-my-claude-board"
+repository = "https://github.com/insightflo/simple-claude-board"
 categories = ["command-line-interface", "development-tools"]
 keywords = ["claude", "tui", "dashboard", "orchestration"]
 

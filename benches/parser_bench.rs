@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use oh_my_claude_board::data::state::DashboardState;
-use oh_my_claude_board::data::tasks_parser;
+use simple_claude_board::data::state::DashboardState;
+use simple_claude_board::data::tasks_parser;
 
 /// Generate a large TASKS.md with N phases, each containing M tasks.
 fn generate_large_tasks_md(phases: usize, tasks_per_phase: usize) -> String {
@@ -60,7 +60,7 @@ fn bench_state_from_content(c: &mut Criterion) {
 fn bench_hook_events_parse(c: &mut Criterion) {
     let input = include_str!("../tests/fixtures/sample_hooks/agent_events.jsonl");
     c.bench_function("parse_hook_events (6 events)", |b| {
-        b.iter(|| oh_my_claude_board::data::hook_parser::parse_hook_events(black_box(input)))
+        b.iter(|| simple_claude_board::data::hook_parser::parse_hook_events(black_box(input)))
     });
 }
 
@@ -76,12 +76,12 @@ fn bench_hook_events_large(c: &mut Criterion) {
         jsonl.push('\n');
     }
     c.bench_function("parse_hook_events (1000 events)", |b| {
-        b.iter(|| oh_my_claude_board::data::hook_parser::parse_hook_events(black_box(&jsonl)))
+        b.iter(|| simple_claude_board::data::hook_parser::parse_hook_events(black_box(&jsonl)))
     });
 }
 
 fn bench_error_analysis(c: &mut Criterion) {
-    use oh_my_claude_board::analysis::rules::analyze_error;
+    use simple_claude_board::analysis::rules::analyze_error;
 
     let messages = [
         "permission denied: /etc/shadow",

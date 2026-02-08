@@ -20,13 +20,13 @@ jobs:
         include:
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact: oh-my-claude-board-x86_64-apple-darwin
+            artifact: simple-claude-board-x86_64-apple-darwin
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact: oh-my-claude-board-aarch64-apple-darwin
+            artifact: simple-claude-board-aarch64-apple-darwin
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: oh-my-claude-board-x86_64-unknown-linux-gnu
+            artifact: simple-claude-board-x86_64-unknown-linux-gnu
 
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
       - name: Package binary
         run: |
           mkdir -p dist
-          cp target/${{ matrix.target }}/release/oh-my-claude-board dist/${{ matrix.artifact }}
+          cp target/${{ matrix.target }}/release/simple-claude-board dist/${{ matrix.artifact }}
           chmod +x dist/${{ matrix.artifact }}
 
       - name: Upload artifact

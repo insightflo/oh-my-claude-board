@@ -11,21 +11,21 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc;
 
-use oh_my_claude_board::app::App;
-use oh_my_claude_board::data::state::DashboardState;
-use oh_my_claude_board::data::watcher::{self, FileChange, WatchConfig};
-use oh_my_claude_board::event::{key_to_action, poll_event, Action, AppEvent};
-use oh_my_claude_board::ui::claude_output::AgentPanel;
-use oh_my_claude_board::ui::detail::DetailWidget;
-use oh_my_claude_board::ui::gantt::GanttWidget;
-use oh_my_claude_board::ui::help::HelpOverlay;
-use oh_my_claude_board::ui::layout::{DashboardLayout, FocusedPane};
-use oh_my_claude_board::ui::retry_modal::RetryModal;
-use oh_my_claude_board::ui::statusbar::StatusBar;
+use simple_claude_board::app::App;
+use simple_claude_board::data::state::DashboardState;
+use simple_claude_board::data::watcher::{self, FileChange, WatchConfig};
+use simple_claude_board::event::{key_to_action, poll_event, Action, AppEvent};
+use simple_claude_board::ui::claude_output::AgentPanel;
+use simple_claude_board::ui::detail::DetailWidget;
+use simple_claude_board::ui::gantt::GanttWidget;
+use simple_claude_board::ui::help::HelpOverlay;
+use simple_claude_board::ui::layout::{DashboardLayout, FocusedPane};
+use simple_claude_board::ui::retry_modal::RetryModal;
+use simple_claude_board::ui::statusbar::StatusBar;
 
 /// Claude Code orchestration TUI dashboard
 #[derive(Parser, Debug)]
-#[command(name = "oh-my-claude-board", version, about)]
+#[command(name = "simple-claude-board", version, about)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -95,7 +95,7 @@ fn main() -> Result<()> {
     match cli.command.unwrap_or(Commands::Watch) {
         Commands::Watch => run_tui(&tasks_path, cli.hooks.as_deref(), cli.events.as_deref()),
         Commands::Init => {
-            println!("oh-my-claude-board init (not yet implemented)");
+            println!("simple-claude-board init (not yet implemented)");
             Ok(())
         }
     }

@@ -1,4 +1,4 @@
-# oh-my-claude-board
+# simple-claude-board
 
 > Claude Code orchestration TUI dashboard
 
@@ -6,7 +6,7 @@
 
 Real-time visualization of Claude Code agent activity and task progress in your terminal.
 
-![oh-my-claude-board screenshot](assets/screenshot.png)
+![simple-claude-board screenshot](assets/screenshot.png)
 
 ## Features
 
@@ -61,13 +61,13 @@ cargo install --path .
 
 # Or build locally
 cargo build --release
-# Binary at target/release/oh-my-claude-board
+# Binary at target/release/simple-claude-board
 ```
 
 ## CLI Reference
 
 ```
-oh-my-claude-board [OPTIONS] [COMMAND]
+simple-claude-board [OPTIONS] [COMMAND]
 ```
 
 | Option | Default | Description |
@@ -129,10 +129,10 @@ Add to `~/.claude/settings.json` under both `PreToolUse` and `PostToolUse`:
 
 ```bash
 # Default: watches ./TASKS.md + ~/.claude/dashboard/events.jsonl
-oh-my-claude-board
+simple-claude-board
 
 # Custom paths
-oh-my-claude-board watch --tasks ./TASKS.md --hooks .claude/hooks --events ~/.claude/dashboard
+simple-claude-board watch --tasks ./TASKS.md --hooks .claude/hooks --events ~/.claude/dashboard
 ```
 
 ### 3. Use Claude Code normally
@@ -152,7 +152,7 @@ Claude Code (tool use)
    events.jsonl            <-- JSONL append-only log
        |
        v  (notify file watcher)
- oh-my-claude-board        <-- TUI dashboard
+ simple-claude-board        <-- TUI dashboard
        |
        v
  Terminal (ratatui)

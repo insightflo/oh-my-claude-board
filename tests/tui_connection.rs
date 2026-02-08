@@ -7,17 +7,17 @@ use std::time::Instant;
 
 use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget, widgets::Widget};
 
-use oh_my_claude_board::app::App;
-use oh_my_claude_board::data::hook_parser;
-use oh_my_claude_board::data::state::DashboardState;
-use oh_my_claude_board::data::tasks_parser::TaskStatus;
-use oh_my_claude_board::event::{key_to_action, Action};
-use oh_my_claude_board::ui::claude_output::AgentPanel;
-use oh_my_claude_board::ui::detail::{DetailContent, DetailWidget};
-use oh_my_claude_board::ui::gantt::{GanttState, GanttWidget};
-use oh_my_claude_board::ui::help::HelpOverlay;
-use oh_my_claude_board::ui::layout::{DashboardLayout, FocusedPane};
-use oh_my_claude_board::ui::statusbar::StatusBar;
+use simple_claude_board::app::App;
+use simple_claude_board::data::hook_parser;
+use simple_claude_board::data::state::DashboardState;
+use simple_claude_board::data::tasks_parser::TaskStatus;
+use simple_claude_board::event::{key_to_action, Action};
+use simple_claude_board::ui::claude_output::AgentPanel;
+use simple_claude_board::ui::detail::{DetailContent, DetailWidget};
+use simple_claude_board::ui::gantt::{GanttState, GanttWidget};
+use simple_claude_board::ui::help::HelpOverlay;
+use simple_claude_board::ui::layout::{DashboardLayout, FocusedPane};
+use simple_claude_board::ui::statusbar::StatusBar;
 
 fn full_state() -> DashboardState {
     let tasks_input = include_str!("fixtures/sample_tasks.md");

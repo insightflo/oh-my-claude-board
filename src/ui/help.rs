@@ -27,7 +27,7 @@ impl HelpOverlay {
         let version = env!("CARGO_PKG_VERSION");
         vec![
             Line::from(vec![Span::styled(
-                format!(" oh-my-claude-board v{version} "),
+                format!(" simple-claude-board v{version} "),
                 Style::default()
                     .fg(Color::Cyan)
                     .add_modifier(Modifier::BOLD),

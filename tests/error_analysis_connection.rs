@@ -7,14 +7,14 @@ use chrono::Utc;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
-use oh_my_claude_board::analysis::rules::{analyze_error, ErrorCategory};
-use oh_my_claude_board::app::{App, RetryTarget};
-use oh_my_claude_board::data::hook_parser;
-use oh_my_claude_board::data::state::{DashboardState, ErrorRecord};
-use oh_my_claude_board::data::tasks_parser::TaskStatus;
-use oh_my_claude_board::event::{key_to_action, Action};
-use oh_my_claude_board::ui::detail::{DetailContent, DetailWidget};
-use oh_my_claude_board::ui::retry_modal::RetryModal;
+use simple_claude_board::analysis::rules::{analyze_error, ErrorCategory};
+use simple_claude_board::app::{App, RetryTarget};
+use simple_claude_board::data::hook_parser;
+use simple_claude_board::data::state::{DashboardState, ErrorRecord};
+use simple_claude_board::data::tasks_parser::TaskStatus;
+use simple_claude_board::event::{key_to_action, Action};
+use simple_claude_board::ui::detail::{DetailContent, DetailWidget};
+use simple_claude_board::ui::retry_modal::RetryModal;
 
 fn buffer_text(buf: &Buffer) -> String {
     let mut text = String::new();
