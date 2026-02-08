@@ -2,7 +2,7 @@
 
 > Claude Code orchestration TUI dashboard
 
-[한국어](README_KO.md)
+[한국어](README_ko.md)
 
 Real-time visualization of Claude Code agent activity and task progress in your terminal.
 
