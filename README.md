@@ -80,7 +80,7 @@ simple-claude-board [OPTIONS] [COMMAND]
 | Command | Description |
 |---|---|
 | `watch` (default) | Watch files and display live TUI dashboard |
-| `init` | Initialize configuration (placeholder) |
+| `init` | Auto-configure hooks and settings |
 
 ## File Paths
 
@@ -99,46 +99,25 @@ The dashboard reads from three locations:
 
 ## Quick Start
 
-### 1. Install the hook
-
-Copy the event logger hook and register it in Claude Code settings:
-
 ```bash
-# Create the events directory
-mkdir -p ~/.claude/dashboard
-
-# Copy the hook script (if not already at ~/.claude/hooks/)
-cp hooks/event-logger.js ~/.claude/hooks/event-logger.js
+cargo install simple-claude-board
+simple-claude-board init    # auto-configure hooks & settings
+simple-claude-board         # launch the dashboard
 ```
 
-Add to `~/.claude/settings.json` under both `PreToolUse` and `PostToolUse`:
+The `init` command automatically:
+- Creates `~/.claude/dashboard/` and `~/.claude/hooks/`
+- Deploys the `event-logger.js` hook script
+- Patches `~/.claude/settings.json` with Pre/PostToolUse hook entries
 
-```json
-{
-  "matcher": "Task|Edit|Write|Read|Bash|Grep|Glob",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "node \"${HOME}/.claude/hooks/event-logger.js\"",
-      "timeout": 3
-    }
-  ]
-}
-```
+Then open another terminal and use Claude Code normally. The dashboard shows agent activity in real time.
 
-### 2. Run the dashboard
+### Advanced usage
 
 ```bash
-# Default: watches ./TASKS.md + ~/.claude/dashboard/events.jsonl
-simple-claude-board
-
 # Custom paths
 simple-claude-board watch --tasks ./TASKS.md --hooks .claude/hooks --events ~/.claude/dashboard
 ```
-
-### 3. Use Claude Code normally
-
-Open another terminal and run Claude Code. The dashboard will show agent activity in real time.
 
 ## How It Works
 

@@ -80,7 +80,7 @@ simple-claude-board [OPTIONS] [COMMAND]
 | 명령 | 설명 |
 |---|---|
 | `watch` (기본) | 파일 감시 및 라이브 TUI 대시보드 표시 |
-| `init` | 설정 초기화 (placeholder) |
+| `init` | 훅 및 설정 자동 구성 |
 
 ## 파일 경로
 
@@ -99,46 +99,25 @@ simple-claude-board [OPTIONS] [COMMAND]
 
 ## 빠른 시작
 
-### 1. 훅 설치
-
-이벤트 로거 훅을 복사하고 Claude Code 설정에 등록합니다:
-
 ```bash
-# 이벤트 디렉토리 생성
-mkdir -p ~/.claude/dashboard
-
-# 훅 스크립트 복사
-cp hooks/event-logger.js ~/.claude/hooks/event-logger.js
+cargo install simple-claude-board
+simple-claude-board init    # 훅 & 설정 자동 구성
+simple-claude-board         # 대시보드 실행
 ```
 
-`~/.claude/settings.json`의 `PreToolUse`와 `PostToolUse`에 다음을 추가합니다:
+`init` 명령이 자동으로 수행하는 작업:
+- `~/.claude/dashboard/` 및 `~/.claude/hooks/` 디렉토리 생성
+- `event-logger.js` 훅 스크립트 배포
+- `~/.claude/settings.json`에 Pre/PostToolUse 훅 엔트리 패치
 
-```json
-{
-  "matcher": "Task|Edit|Write|Read|Bash|Grep|Glob",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "node \"${HOME}/.claude/hooks/event-logger.js\"",
-      "timeout": 3
-    }
-  ]
-}
-```
+그런 다음 다른 터미널을 열고 Claude Code를 정상 사용합니다. 대시보드에 에이전트 활동이 실시간으로 표시됩니다.
 
-### 2. 대시보드 실행
+### 고급 사용법
 
 ```bash
-# 기본값: ./TASKS.md + ~/.claude/dashboard/events.jsonl 감시
-simple-claude-board
-
 # 커스텀 경로
 simple-claude-board watch --tasks ./TASKS.md --hooks .claude/hooks --events ~/.claude/dashboard
 ```
-
-### 3. Claude Code 정상 사용
-
-다른 터미널을 열고 Claude Code를 실행합니다. 대시보드에 에이전트 활동이 실시간으로 표시됩니다.
 
 ## 작동 원리
 

@@ -94,10 +94,7 @@ fn main() -> Result<()> {
 
     match cli.command.unwrap_or(Commands::Watch) {
         Commands::Watch => run_tui(&tasks_path, cli.hooks.as_deref(), cli.events.as_deref()),
-        Commands::Init => {
-            println!("simple-claude-board init (not yet implemented)");
-            Ok(())
-        }
+        Commands::Init => simple_claude_board::init::run_init(),
     }
 }
 
