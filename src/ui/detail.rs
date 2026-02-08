@@ -10,7 +10,9 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Widget, Wrap},
 };
 
-use crate::data::state::{DashboardState, ErrorRecord};
+use chrono::Utc;
+
+use crate::data::state::{AgentState, AgentStatus, DashboardState, ErrorRecord};
 use crate::data::tasks_parser::{ParsedPhase, ParsedTask, TaskStatus};
 
 /// Parse a markdown line into styled spans.
@@ -66,6 +68,7 @@ fn parse_md_spans(line: &str) -> Vec<Span<'static>> {
 pub enum DetailContent<'a> {
     Phase(&'a ParsedPhase),
     Task(&'a ParsedTask, &'a str, Vec<&'a ErrorRecord>), // task + phase name + errors
+    Agent(&'a AgentState, Vec<&'a ErrorRecord>),
     None,
 }
 
@@ -78,6 +81,35 @@ pub struct DetailWidget<'a> {
 impl<'a> DetailWidget<'a> {
     pub fn new(content: DetailContent<'a>, focused: bool) -> Self {
         Self { content, focused }
+    }
+
+    pub fn from_agent_selection(
+        state: &'a DashboardState,
+        selected_agent: usize,
+    ) -> Self {
+        let mut ids: Vec<&String> = state.agents.keys().collect();
+        ids.sort();
+
+        let content = if let Some(agent_id) = ids.get(selected_agent) {
+            if let Some(agent) = state.agents.get(*agent_id) {
+                let errors: Vec<&ErrorRecord> = state
+                    .recent_errors
+                    .iter()
+                    .filter(|e| e.agent_id == agent.agent_id)
+                    .rev()
+                    .take(3)
+                    .collect();
+                DetailContent::Agent(agent, errors)
+            } else {
+                DetailContent::None
+            }
+        } else {
+            DetailContent::None
+        };
+        Self {
+            content,
+            focused: true,
+        }
     }
 
     pub fn from_selection(
@@ -154,6 +186,138 @@ impl<'a> DetailWidget<'a> {
                         Span::raw(format!("{}", phase.tasks.len())),
                     ]),
                 ]
+            }
+            DetailContent::Agent(agent, errors) => {
+                let status_str = format!("{:?}", agent.status);
+                let status_color = match agent.status {
+                    AgentStatus::Running => Color::Green,
+                    AgentStatus::Idle => Color::DarkGray,
+                    AgentStatus::Error => Color::Red,
+                };
+
+                let mut lines = vec![
+                    Line::from(vec![
+                        Span::styled("Agent:  ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(
+                            agent.agent_id.clone(),
+                            Style::default()
+                                .fg(Color::White)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]),
+                    Line::from(vec![
+                        Span::styled("Status: ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(status_str, Style::default().fg(status_color)),
+                    ]),
+                    Line::from(vec![
+                        Span::styled("Events: ", Style::default().fg(Color::DarkGray)),
+                        Span::raw(format!("{}", agent.event_count)),
+                        if agent.error_count > 0 {
+                            Span::styled(
+                                format!(" ({} errors)", agent.error_count),
+                                Style::default().fg(Color::Red),
+                            )
+                        } else {
+                            Span::raw("".to_string())
+                        },
+                    ]),
+                ];
+
+                // Active duration
+                if let Some(first) = agent.first_seen {
+                    let last = agent.last_seen.unwrap_or_else(Utc::now);
+                    let duration = last.signed_duration_since(first);
+                    let secs = duration.num_seconds();
+                    let active_str = if secs >= 3600 {
+                        format!("{}h {}m", secs / 3600, (secs % 3600) / 60)
+                    } else if secs >= 60 {
+                        format!("{}m {}s", secs / 60, secs % 60)
+                    } else {
+                        format!("{secs}s")
+                    };
+                    lines.push(Line::from(vec![
+                        Span::styled("Active: ", Style::default().fg(Color::DarkGray)),
+                        Span::raw(active_str),
+                    ]));
+                }
+
+                if let Some(ref tool) = agent.current_tool {
+                    lines.push(Line::from(vec![
+                        Span::styled("Tool:   ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(tool.clone(), Style::default().fg(Color::Yellow)),
+                    ]));
+                }
+
+                // Task history
+                if !agent.task_history.is_empty() {
+                    lines.push(Line::raw(""));
+                    lines.push(Line::styled(
+                        "Tasks:",
+                        Style::default()
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD),
+                    ));
+                    for entry in &agent.task_history {
+                        let start = entry.started_at.format("%H:%M");
+                        let end_str = if let Some(end) = entry.completed_at {
+                            let dur = end.signed_duration_since(entry.started_at);
+                            let secs = dur.num_seconds();
+                            let dur_str = if secs >= 60 {
+                                format!("{}m", secs / 60)
+                            } else {
+                                format!("{secs}s")
+                            };
+                            format!("{} ({dur_str})", end.format("%H:%M"))
+                        } else {
+                            "(running)".to_string()
+                        };
+                        lines.push(Line::from(vec![
+                            Span::styled("  ", Style::default()),
+                            Span::styled(
+                                entry.task_id.clone(),
+                                Style::default().fg(Color::Cyan),
+                            ),
+                            Span::styled(
+                                format!("  {start} → {end_str}"),
+                                Style::default().fg(Color::DarkGray),
+                            ),
+                        ]));
+                    }
+                }
+
+                // Errors section
+                if !errors.is_empty() {
+                    lines.push(Line::raw(""));
+                    lines.push(Line::styled(
+                        "Errors:",
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    ));
+                    for err in errors {
+                        let msg_short = if err.message.len() > 50 {
+                            format!("{}...", &err.message[..47])
+                        } else {
+                            err.message.clone()
+                        };
+                        lines.push(Line::from(vec![
+                            Span::styled("  !! ", Style::default().fg(Color::Red)),
+                            Span::styled(msg_short, Style::default().fg(Color::White)),
+                        ]));
+                        let retry_str = if err.retryable { "Retry" } else { "No retry" };
+                        lines.push(Line::from(vec![
+                            Span::styled("     ", Style::default()),
+                            Span::styled(
+                                format!("{}", err.category),
+                                Style::default().fg(Color::Yellow),
+                            ),
+                            Span::styled(
+                                format!(" | {retry_str} | {}", err.suggestion),
+                                Style::default().fg(Color::DarkGray),
+                            ),
+                        ]));
+                    }
+                }
+
+                lines
             }
             DetailContent::Task(task, phase_name, errors) => {
                 let status_str = format!("{:?}", task.status);
@@ -375,6 +539,50 @@ mod tests {
         let widget = DetailWidget::from_selection(&state, Some((0, 0)), 1, true);
         let lines = widget.build_lines();
         assert!(lines.len() >= 4);
+    }
+
+    #[test]
+    fn detail_agent_renders() {
+        use crate::data::hook_parser;
+
+        let input = include_str!("../../tests/fixtures/sample_hooks/agent_events.jsonl");
+        let result = hook_parser::parse_hook_events(input);
+        let mut state = DashboardState::default();
+        state.update_from_events(&result.events);
+
+        let widget = DetailWidget::from_agent_selection(&state, 0);
+        let lines = widget.build_lines();
+        // Should show Agent:, Status:, Events:
+        assert!(lines.len() >= 3);
+        let has_agent = lines
+            .iter()
+            .any(|l| l.spans.iter().any(|s| s.content.contains("Agent")));
+        assert!(has_agent, "should show Agent header");
+    }
+
+    #[test]
+    fn detail_agent_with_history() {
+        use crate::data::hook_parser;
+
+        let input = include_str!("../../tests/fixtures/sample_hooks/agent_events.jsonl");
+        let result = hook_parser::parse_hook_events(input);
+        let mut state = DashboardState::default();
+        state.update_from_events(&result.events);
+
+        let widget = DetailWidget::from_agent_selection(&state, 0);
+        let lines = widget.build_lines();
+        let has_tasks = lines
+            .iter()
+            .any(|l| l.spans.iter().any(|s| s.content.contains("Tasks")));
+        assert!(has_tasks, "should show Tasks section");
+    }
+
+    #[test]
+    fn detail_agent_none_when_no_agents() {
+        let state = DashboardState::default();
+        let widget = DetailWidget::from_agent_selection(&state, 0);
+        let lines = widget.build_lines();
+        assert_eq!(lines.len(), 1); // "Select a task to view details"
     }
 
     #[test]

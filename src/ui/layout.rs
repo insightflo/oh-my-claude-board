@@ -10,13 +10,15 @@ use ratatui::layout::{Constraint, Direction, Layout, Rect};
 pub enum FocusedPane {
     TaskList,
     Detail,
+    Agents,
 }
 
 impl FocusedPane {
     pub fn toggle(self) -> Self {
         match self {
             Self::TaskList => Self::Detail,
-            Self::Detail => Self::TaskList,
+            Self::Detail => Self::Agents,
+            Self::Agents => Self::TaskList,
         }
     }
 }
@@ -73,9 +75,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn focus_toggle() {
+    fn focus_toggle_3way() {
         assert_eq!(FocusedPane::TaskList.toggle(), FocusedPane::Detail);
-        assert_eq!(FocusedPane::Detail.toggle(), FocusedPane::TaskList);
+        assert_eq!(FocusedPane::Detail.toggle(), FocusedPane::Agents);
+        assert_eq!(FocusedPane::Agents.toggle(), FocusedPane::TaskList);
     }
 
     #[test]

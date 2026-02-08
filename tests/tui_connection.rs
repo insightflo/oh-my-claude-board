@@ -224,6 +224,8 @@ fn tab_toggles_focus() {
     app.toggle_focus();
     assert_eq!(app.focused, FocusedPane::Detail);
     app.toggle_focus();
+    assert_eq!(app.focused, FocusedPane::Agents);
+    app.toggle_focus();
     assert_eq!(app.focused, FocusedPane::TaskList);
 }
 

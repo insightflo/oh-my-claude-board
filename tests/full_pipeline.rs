@@ -252,9 +252,13 @@ fn keyboard_interaction_scenario() {
     assert_eq!(app.gantt_state.selected, 1);
     assert_eq!(app.selected_task(), Some((0, 0)));
 
-    // Tab → toggle focus
+    // Tab → toggle focus (3-way: TaskList → Detail → Agents → TaskList)
     app.toggle_focus();
     assert_eq!(app.focused, FocusedPane::Detail);
+
+    // Tab → Agents
+    app.toggle_focus();
+    assert_eq!(app.focused, FocusedPane::Agents);
 
     // Tab → back to task list
     app.toggle_focus();

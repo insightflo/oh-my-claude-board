@@ -29,6 +29,7 @@ pub struct App {
     pub retry_target: Option<RetryTarget>,
     pub tasks_path: Option<PathBuf>,
     pub start_time: Instant,
+    pub selected_agent: usize,
 }
 
 impl App {
@@ -43,6 +44,7 @@ impl App {
             retry_target: None,
             tasks_path: None,
             start_time: Instant::now(),
+            selected_agent: 0,
         }
     }
 
@@ -86,6 +88,28 @@ impl App {
     /// Toggle between Tree and HorizontalBar view modes
     pub fn toggle_view(&mut self) {
         self.gantt_state.toggle_view();
+    }
+
+    /// Get sorted agent IDs (consistent order for UI)
+    pub fn sorted_agent_ids(&self) -> Vec<String> {
+        let mut ids: Vec<String> = self.dashboard.agents.keys().cloned().collect();
+        ids.sort();
+        ids
+    }
+
+    /// Move agent selection down
+    pub fn agent_move_down(&mut self) {
+        let count = self.dashboard.agents.len();
+        if count > 0 && self.selected_agent < count - 1 {
+            self.selected_agent += 1;
+        }
+    }
+
+    /// Move agent selection up
+    pub fn agent_move_up(&mut self) {
+        if self.selected_agent > 0 {
+            self.selected_agent -= 1;
+        }
     }
 
     /// Open the retry modal for the currently selected task
@@ -198,13 +222,59 @@ mod tests {
     }
 
     #[test]
-    fn app_toggle_focus() {
+    fn app_toggle_focus_3way() {
         let mut app = App::new();
         assert_eq!(app.focused, FocusedPane::TaskList);
         app.toggle_focus();
         assert_eq!(app.focused, FocusedPane::Detail);
         app.toggle_focus();
+        assert_eq!(app.focused, FocusedPane::Agents);
+        app.toggle_focus();
         assert_eq!(app.focused, FocusedPane::TaskList);
+    }
+
+    #[test]
+    fn agent_navigation() {
+        let mut app = App::new();
+        // No agents: move does nothing
+        app.agent_move_down();
+        assert_eq!(app.selected_agent, 0);
+
+        // Add some agents via events
+        use crate::data::hook_parser;
+        let input = include_str!("../tests/fixtures/sample_hooks/agent_events.jsonl");
+        let result = hook_parser::parse_hook_events(input);
+        app.dashboard.update_from_events(&result.events);
+
+        let input2 = include_str!("../tests/fixtures/sample_hooks/error_events.jsonl");
+        let result2 = hook_parser::parse_hook_events(input2);
+        app.dashboard.update_from_events(&result2.events);
+
+        // Now we have >=2 agents
+        assert!(app.dashboard.agents.len() >= 2);
+        app.agent_move_down();
+        assert_eq!(app.selected_agent, 1);
+        app.agent_move_up();
+        assert_eq!(app.selected_agent, 0);
+        // Can't go below 0
+        app.agent_move_up();
+        assert_eq!(app.selected_agent, 0);
+    }
+
+    #[test]
+    fn sorted_agent_ids() {
+        let mut app = App::new();
+        use crate::data::hook_parser;
+        let input = include_str!("../tests/fixtures/sample_hooks/agent_events.jsonl");
+        let result = hook_parser::parse_hook_events(input);
+        app.dashboard.update_from_events(&result.events);
+
+        let ids = app.sorted_agent_ids();
+        assert!(!ids.is_empty());
+        // Should be sorted
+        let mut sorted = ids.clone();
+        sorted.sort();
+        assert_eq!(ids, sorted);
     }
 
     #[test]

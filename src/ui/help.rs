@@ -50,7 +50,7 @@ impl HelpOverlay {
             ]),
             Line::from(vec![
                 Span::styled("  Tab       ", Style::default().fg(Color::Yellow)),
-                Span::raw("Switch focus"),
+                Span::raw("Focus: Tasks→Detail→Agents"),
             ]),
             Line::from(vec![
                 Span::styled("  Space     ", Style::default().fg(Color::Yellow)),

@@ -197,14 +197,18 @@ fn run_loop(
             let gantt = GanttWidget::new(&app.dashboard, app.focused == FocusedPane::TaskList);
             frame.render_stateful_widget(gantt, layout.task_list, &mut app.gantt_state);
 
-            // Right panel: Detail view
+            // Right panel: Detail view (content depends on focused pane)
             let selected_task = app.selected_task();
-            let detail = DetailWidget::from_selection(
-                &app.dashboard,
-                selected_task,
-                app.gantt_state.selected,
-                app.focused == FocusedPane::Detail,
-            );
+            let detail = if app.focused == FocusedPane::Agents {
+                DetailWidget::from_agent_selection(&app.dashboard, app.selected_agent)
+            } else {
+                DetailWidget::from_selection(
+                    &app.dashboard,
+                    selected_task,
+                    app.gantt_state.selected,
+                    app.focused == FocusedPane::Detail,
+                )
+            };
             frame.render_widget(detail, layout.detail);
 
             // Right bottom: Agent activity (highlights agent for selected task)
@@ -216,7 +220,10 @@ fn run_loop(
                         .and_then(|phase| phase.tasks.get(ti))
                 })
                 .and_then(|task| app.dashboard.agent_for_task(&task.id));
-            let agents = AgentPanel::new(&app.dashboard).with_selected_agent(selected_agent_name);
+            let agents = AgentPanel::new(&app.dashboard)
+                .with_selected_agent(selected_agent_name)
+                .with_focused(app.focused == FocusedPane::Agents)
+                .with_selected_index(app.selected_agent);
             frame.render_widget(agents, layout.agents);
 
             // Bottom: Status bar
@@ -265,8 +272,14 @@ fn run_loop(
                     } else {
                         match key_to_action(key) {
                             Action::Quit => app.quit(),
-                            Action::MoveDown => app.move_down(),
-                            Action::MoveUp => app.move_up(),
+                            Action::MoveDown => match app.focused {
+                                FocusedPane::Agents => app.agent_move_down(),
+                                _ => app.move_down(),
+                            },
+                            Action::MoveUp => match app.focused {
+                                FocusedPane::Agents => app.agent_move_up(),
+                                _ => app.move_up(),
+                            },
                             Action::ToggleFocus => app.toggle_focus(),
                             Action::ToggleHelp => app.toggle_help(),
                             Action::ToggleCollapse => app.toggle_collapse(),

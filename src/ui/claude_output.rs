@@ -18,6 +18,8 @@ pub struct AgentPanel<'a> {
     state: &'a DashboardState,
     /// Agent name assigned to the currently selected task (from TASKS.md `@agent`)
     selected_agent: Option<&'a str>,
+    focused: bool,
+    selected_index: usize,
 }
 
 impl<'a> AgentPanel<'a> {
@@ -25,11 +27,23 @@ impl<'a> AgentPanel<'a> {
         Self {
             state,
             selected_agent: None,
+            focused: false,
+            selected_index: 0,
         }
     }
 
     pub fn with_selected_agent(mut self, agent: Option<&'a str>) -> Self {
         self.selected_agent = agent;
+        self
+    }
+
+    pub fn with_focused(mut self, focused: bool) -> Self {
+        self.focused = focused;
+        self
+    }
+
+    pub fn with_selected_index(mut self, index: usize) -> Self {
+        self.selected_index = index;
         self
     }
 
@@ -59,10 +73,12 @@ impl<'a> AgentPanel<'a> {
         let mut agents: Vec<&AgentState> = self.state.agents.values().collect();
         agents.sort_by_key(|a| &a.agent_id);
 
-        for agent in agents {
-            let is_highlighted = self
-                .selected_agent
-                .is_some_and(|name| agent.agent_id.contains(name));
+        for (idx, agent) in agents.iter().enumerate() {
+            let is_selected = self.focused && idx == self.selected_index;
+            let is_highlighted = is_selected
+                || self
+                    .selected_agent
+                    .is_some_and(|name| agent.agent_id.contains(name));
 
             let (status_icon, status_color) = match agent.status {
                 AgentStatus::Running => (">>", Color::Green),
@@ -80,9 +96,10 @@ impl<'a> AgentPanel<'a> {
                     .add_modifier(Modifier::BOLD)
             };
 
+            let prefix = if is_selected { ">" } else { " " };
             let mut spans = vec![
                 Span::styled(
-                    format!(" {status_icon} "),
+                    format!("{prefix}{status_icon} "),
                     Style::default().fg(status_color),
                 ),
                 Span::styled(agent.agent_id.clone(), name_style),
@@ -154,10 +171,15 @@ impl<'a> AgentPanel<'a> {
 
 impl<'a> Widget for AgentPanel<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let border_color = if self.focused {
+            Color::Cyan
+        } else {
+            Color::DarkGray
+        };
         let block = Block::default()
             .title(" Agents ")
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::DarkGray));
+            .border_style(Style::default().fg(border_color));
 
         let lines = self.build_lines();
         let paragraph = Paragraph::new(lines)
@@ -255,6 +277,33 @@ mod tests {
                 .any(|s| s.content.contains("Network") || s.content.contains("Permission"))
         });
         assert!(has_category, "error summary should show category");
+    }
+
+    #[test]
+    fn focused_panel_highlights_selected() {
+        let state = state_with_agents();
+        let panel = AgentPanel::new(&state)
+            .with_focused(true)
+            .with_selected_index(0);
+        let lines = panel.build_lines();
+        // Should have selection indicator ">" on the first agent line
+        let has_selector = lines
+            .iter()
+            .any(|l| l.spans.iter().any(|s| s.content.starts_with('>')));
+        assert!(has_selector, "focused panel should show > selector");
+    }
+
+    #[test]
+    fn unfocused_panel_no_selector() {
+        let state = state_with_agents();
+        let panel = AgentPanel::new(&state)
+            .with_focused(false)
+            .with_selected_index(0);
+        let lines = panel.build_lines();
+        let has_selector = lines
+            .iter()
+            .any(|l| l.spans.iter().any(|s| s.content.starts_with('>')));
+        assert!(!has_selector, "unfocused panel should not show > selector");
     }
 
     #[test]

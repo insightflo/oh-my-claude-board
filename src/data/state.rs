@@ -20,6 +20,14 @@ pub enum AgentStatus {
     Error,
 }
 
+/// Record of an agent working on a task
+#[derive(Debug, Clone)]
+pub struct TaskHistoryEntry {
+    pub task_id: String,
+    pub started_at: DateTime<Utc>,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
 /// A snapshot of one agent's current state
 #[derive(Debug, Clone)]
 pub struct AgentState {
@@ -29,6 +37,9 @@ pub struct AgentState {
     pub current_tool: Option<String>,
     pub event_count: usize,
     pub error_count: usize,
+    pub task_history: Vec<TaskHistoryEntry>,
+    pub first_seen: Option<DateTime<Utc>>,
+    pub last_seen: Option<DateTime<Utc>>,
 }
 
 /// Timing info for a task derived from hook events
@@ -141,14 +152,26 @@ impl DashboardState {
                     current_tool: None,
                     event_count: 0,
                     error_count: 0,
+                    task_history: Vec::new(),
+                    first_seen: None,
+                    last_seen: None,
                 });
 
             agent.event_count += 1;
+            agent.last_seen = Some(event.timestamp);
+            if agent.first_seen.is_none() {
+                agent.first_seen = Some(event.timestamp);
+            }
 
             match event.event_type {
                 EventType::AgentStart => {
                     agent.status = AgentStatus::Running;
                     agent.current_task = Some(event.task_id.clone());
+                    agent.task_history.push(TaskHistoryEntry {
+                        task_id: event.task_id.clone(),
+                        started_at: event.timestamp,
+                        completed_at: None,
+                    });
                     // Persist task → agent mapping
                     self.task_agents
                         .insert(event.task_id.clone(), event.agent_id.clone());
@@ -162,6 +185,12 @@ impl DashboardState {
                     if let Some(ref task_id) = agent.current_task {
                         let timing = self.task_times.entry(task_id.clone()).or_default();
                         timing.completed_at = Some(event.timestamp);
+                    }
+                    // Set completed_at on the last task history entry
+                    if let Some(last) = agent.task_history.last_mut() {
+                        if last.completed_at.is_none() {
+                            last.completed_at = Some(event.timestamp);
+                        }
                     }
                     agent.current_task = None;
                     agent.current_tool = None;
@@ -554,6 +583,25 @@ mod tests {
         assert_eq!(agent.status, AgentStatus::Running);
         assert_eq!(agent.current_tool.as_deref(), Some("Bash"));
         assert_eq!(agent.event_count, 3);
+    }
+
+    #[test]
+    fn task_history_tracked_on_agent_events() {
+        let input = include_str!("../../tests/fixtures/sample_hooks/agent_events.jsonl");
+        let result = hook_parser::parse_hook_events(input);
+
+        let mut state = DashboardState::default();
+        state.update_from_events(&result.events);
+
+        let agent = state.agents.get("backend-specialist-1").unwrap();
+        assert!(!agent.task_history.is_empty(), "should have task history");
+        assert_eq!(agent.task_history[0].task_id, "P1-R1-T1");
+        assert!(
+            agent.task_history[0].completed_at.is_some(),
+            "completed task should have completed_at"
+        );
+        assert!(agent.first_seen.is_some());
+        assert!(agent.last_seen.is_some());
     }
 
     #[test]
