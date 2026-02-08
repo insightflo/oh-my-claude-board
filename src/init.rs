@@ -166,8 +166,8 @@ fn patch_settings(path: &PathBuf) -> Result<()> {
     }
 
     if patched {
-        let pretty = serde_json::to_string_pretty(&settings)
-            .context("Failed to serialize settings.json")?;
+        let pretty =
+            serde_json::to_string_pretty(&settings).context("Failed to serialize settings.json")?;
         fs::write(path, pretty.as_bytes())
             .with_context(|| format!("Failed to write: {}", path.display()))?;
         println!("  Saved: {}", path.display());
@@ -248,8 +248,11 @@ mod tests {
                 }]
             }
         });
-        fs::write(&settings_path, serde_json::to_string_pretty(&existing).unwrap())
-            .expect("write");
+        fs::write(
+            &settings_path,
+            serde_json::to_string_pretty(&existing).unwrap(),
+        )
+        .expect("write");
 
         patch_settings(&settings_path).expect("patch succeeds");
 

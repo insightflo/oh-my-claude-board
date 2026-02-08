@@ -83,10 +83,7 @@ impl<'a> DetailWidget<'a> {
         Self { content, focused }
     }
 
-    pub fn from_agent_selection(
-        state: &'a DashboardState,
-        selected_agent: usize,
-    ) -> Self {
+    pub fn from_agent_selection(state: &'a DashboardState, selected_agent: usize) -> Self {
         let mut ids: Vec<&String> = state.agents.keys().collect();
         ids.sort();
 
@@ -273,10 +270,7 @@ impl<'a> DetailWidget<'a> {
                         };
                         lines.push(Line::from(vec![
                             Span::styled("  ", Style::default()),
-                            Span::styled(
-                                entry.task_id.clone(),
-                                Style::default().fg(Color::Cyan),
-                            ),
+                            Span::styled(entry.task_id.clone(), Style::default().fg(Color::Cyan)),
                             Span::styled(
                                 format!("  {start} → {end_str}"),
                                 Style::default().fg(Color::DarkGray),
