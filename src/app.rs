@@ -1,6 +1,7 @@
 //! App state management and event loop
 
 use crate::data::state::DashboardState;
+use crate::data::watcher::FileChange;
 use crate::ui::gantt::GanttState;
 use crate::ui::layout::FocusedPane;
 
@@ -52,6 +53,23 @@ impl App {
     /// Get the currently selected task as (phase_idx, task_idx)
     pub fn selected_task(&self) -> Option<(usize, usize)> {
         self.gantt_state.selected_task(&self.dashboard)
+    }
+
+    /// Handle a file change event from the watcher
+    pub fn handle_file_change(&mut self, change: &FileChange) {
+        match change {
+            FileChange::TasksModified(path) => {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    let _ = self.dashboard.reload_tasks(&content);
+                }
+            }
+            FileChange::HookEventCreated(path) | FileChange::HookEventModified(path) => {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    let result = crate::data::hook_parser::parse_hook_events(&content);
+                    self.dashboard.update_from_events(&result.events);
+                }
+            }
+        }
     }
 }
 
@@ -122,5 +140,41 @@ mod tests {
         let dashboard = DashboardState::from_tasks_content(input).unwrap();
         let app = App::new().with_dashboard(dashboard);
         assert_eq!(app.dashboard.total_tasks, 8);
+    }
+
+    #[test]
+    fn handle_file_change_tasks() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let tasks_file = tmp.path().join("TASKS.md");
+        std::fs::write(
+            &tasks_file,
+            "# Phase 0: Setup\n\n### [x] P0-T0.1: Init project\n",
+        )
+        .unwrap();
+
+        let mut app = App::new();
+        assert_eq!(app.dashboard.total_tasks, 0);
+
+        let change = FileChange::TasksModified(tasks_file);
+        app.handle_file_change(&change);
+        assert_eq!(app.dashboard.total_tasks, 1);
+    }
+
+    #[test]
+    fn handle_file_change_hook() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let hook_file = tmp.path().join("session.jsonl");
+        std::fs::write(
+            &hook_file,
+            r#"{"event_type":"agent_start","agent_id":"main","task_id":"T1","session_id":"s1","timestamp":"2026-02-08T00:00:00Z"}"#,
+        )
+        .unwrap();
+
+        let mut app = App::new();
+        assert!(app.dashboard.agents.is_empty());
+
+        let change = FileChange::HookEventCreated(hook_file);
+        app.handle_file_change(&change);
+        assert!(!app.dashboard.agents.is_empty());
     }
 }

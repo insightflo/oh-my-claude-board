@@ -362,8 +362,11 @@ mod tests {
         while rx.try_recv().is_ok() {}
 
         // Modify the file
-        fs::write(&tasks_path, "# Phase 0: Modified content for test\n## Added")
-            .expect("write");
+        fs::write(
+            &tasks_path,
+            "# Phase 0: Modified content for test\n## Added",
+        )
+        .expect("write");
 
         // Collect raw events over 3 seconds
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
