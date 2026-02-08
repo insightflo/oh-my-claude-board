@@ -56,12 +56,13 @@ node --version
 ## Installation
 
 ```bash
-# From source
-cargo install --path .
+# From crates.io
+cargo install simple-claude-board
 
-# Or build locally
-cargo build --release
-# Binary at target/release/simple-claude-board
+# Or from source
+git clone https://github.com/insightflo/simple-claude-board.git
+cd simple-claude-board
+cargo install --path .
 ```
 
 ## CLI Reference

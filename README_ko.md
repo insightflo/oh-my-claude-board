@@ -56,12 +56,13 @@ node --version
 ## 설치
 
 ```bash
-# 소스에서 설치
-cargo install --path .
+# crates.io에서 설치
+cargo install simple-claude-board
 
-# 또는 로컬 빌드
-cargo build --release
-# 바이너리 위치: target/release/simple-claude-board
+# 또는 소스에서 설치
+git clone https://github.com/insightflo/simple-claude-board.git
+cd simple-claude-board
+cargo install --path .
 ```
 
 ## CLI 사용법
