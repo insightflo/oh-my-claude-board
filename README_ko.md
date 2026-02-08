@@ -243,7 +243,6 @@ src/
     help.rs            도움말 오버레이 팝업
   analysis/
     rules.rs           에러 패턴 매칭 규칙
-    api.rs             선택적 AI 분석 (feature: ai-analysis)
 ```
 
 ## 의존성
@@ -260,7 +259,6 @@ src/
 | `chrono` | 0.4 | 타임스탬프 파싱 (serde 지원) |
 | `anyhow` + `thiserror` | 1 / 2 | 에러 처리 |
 | `tracing` | 0.1 | 구조화된 로깅 |
-| `reqwest` | 0.12 | HTTP 클라이언트 (선택적, feature: `ai-analysis`) |
 
 ## 개발
 

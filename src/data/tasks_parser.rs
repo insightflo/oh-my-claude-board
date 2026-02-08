@@ -30,6 +30,7 @@ pub struct ParsedTask {
     pub status: TaskStatus,
     pub agent: Option<String>,
     pub blocked_by: Vec<String>,
+    pub body: String,
 }
 
 /// A phase containing multiple tasks
@@ -202,6 +203,7 @@ fn flush_task(
                 status,
                 agent,
                 blocked_by,
+                body: body.trim().to_string(),
             });
         }
         body.clear();
@@ -400,5 +402,28 @@ mod tests {
         let phases = parse_tasks_md(input).unwrap();
         assert_eq!(phases.len(), 1);
         assert_eq!(phases[0].tasks.len(), 2);
+    }
+
+    #[test]
+    fn sample_tasks_body_contains_spec() {
+        let input = include_str!("../../tests/fixtures/sample_tasks.md");
+        let phases = parse_tasks_md(input).unwrap();
+        let task = &phases[0].tasks[0];
+        assert!(
+            task.body.contains("스펙"),
+            "body should contain spec line: {}",
+            task.body
+        );
+        assert!(
+            task.body.contains("@backend-specialist"),
+            "body should contain agent line"
+        );
+    }
+
+    #[test]
+    fn task_without_body_has_empty_body() {
+        let input = "# Phase 0: Setup\n\n### [x] T1: Done\n### [ ] T2: Pending\n";
+        let phases = parse_tasks_md(input).unwrap();
+        assert!(phases[0].tasks[0].body.is_empty());
     }
 }

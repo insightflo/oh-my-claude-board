@@ -8,6 +8,7 @@ use std::path::Path;
 
 use chrono::{DateTime, Utc};
 
+use crate::analysis::rules::{analyze_error, ErrorCategory};
 use crate::data::hook_parser::{self, EventType, HookEvent};
 use crate::data::tasks_parser::{self, ParsedPhase, TaskStatus};
 
@@ -37,6 +38,21 @@ pub struct TaskTiming {
     pub completed_at: Option<DateTime<Utc>>,
 }
 
+/// Maximum number of recent errors to keep
+const MAX_RECENT_ERRORS: usize = 50;
+
+/// A recorded error with analysis results
+#[derive(Debug, Clone)]
+pub struct ErrorRecord {
+    pub agent_id: String,
+    pub task_id: String,
+    pub message: String,
+    pub category: ErrorCategory,
+    pub retryable: bool,
+    pub suggestion: &'static str,
+    pub timestamp: DateTime<Utc>,
+}
+
 /// The complete dashboard state
 #[derive(Debug, Clone)]
 pub struct DashboardState {
@@ -49,6 +65,7 @@ pub struct DashboardState {
     pub completed_tasks: usize,
     pub failed_tasks: usize,
     pub overall_progress: f32,
+    pub recent_errors: Vec<ErrorRecord>,
 }
 
 impl Default for DashboardState {
@@ -62,6 +79,7 @@ impl Default for DashboardState {
             completed_tasks: 0,
             failed_tasks: 0,
             overall_progress: 0.0,
+            recent_errors: Vec::new(),
         }
     }
 }
@@ -157,6 +175,22 @@ impl DashboardState {
                 EventType::Error => {
                     agent.status = AgentStatus::Error;
                     agent.error_count += 1;
+
+                    if let Some(ref msg) = event.error_message {
+                        let analysis = analyze_error(msg);
+                        self.recent_errors.push(ErrorRecord {
+                            agent_id: event.agent_id.clone(),
+                            task_id: event.task_id.clone(),
+                            message: msg.clone(),
+                            category: analysis.category,
+                            retryable: analysis.retryable,
+                            suggestion: analysis.suggestion,
+                            timestamp: event.timestamp,
+                        });
+                        if self.recent_errors.len() > MAX_RECENT_ERRORS {
+                            self.recent_errors.remove(0);
+                        }
+                    }
                 }
             }
         }
@@ -260,6 +294,40 @@ mod tests {
         assert_eq!(agent.error_count, 2);
         // Last event is agent_end, so status is Idle
         assert_eq!(agent.status, AgentStatus::Idle);
+
+        // Verify error records were created with analysis
+        assert_eq!(state.recent_errors.len(), 2);
+        assert_eq!(
+            state.recent_errors[0].category,
+            crate::analysis::rules::ErrorCategory::Permission
+        );
+        assert!(!state.recent_errors[0].retryable);
+        assert_eq!(
+            state.recent_errors[1].category,
+            crate::analysis::rules::ErrorCategory::Network
+        );
+        assert!(state.recent_errors[1].retryable);
+    }
+
+    #[test]
+    fn recent_errors_capped_at_max() {
+        let mut state = DashboardState::default();
+        // Generate 55 error events to exceed the 50 cap
+        let events: Vec<HookEvent> = (0..55)
+            .map(|i| HookEvent {
+                event_type: EventType::Error,
+                timestamp: Utc::now(),
+                agent_id: "test-agent".to_string(),
+                task_id: format!("T-{i}"),
+                session_id: "sess-cap".to_string(),
+                tool_name: None,
+                error_message: Some(format!("error {i}")),
+            })
+            .collect();
+        state.update_from_events(&events);
+        assert_eq!(state.recent_errors.len(), 50);
+        // Oldest errors should have been evicted; first remaining is error 5
+        assert_eq!(state.recent_errors[0].task_id, "T-5");
     }
 
     #[test]

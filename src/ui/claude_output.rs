@@ -115,6 +115,30 @@ impl<'a> AgentPanel<'a> {
             ));
 
             lines.push(Line::from(spans));
+
+            // Show most recent error for this agent (if any)
+            if let Some(err) = self
+                .state
+                .recent_errors
+                .iter()
+                .rev()
+                .find(|e| e.agent_id == agent.agent_id)
+            {
+                let retry_str = if err.retryable { "retry" } else { "no retry" };
+                let msg_short = if err.message.len() > 40 {
+                    format!("{}...", &err.message[..37])
+                } else {
+                    err.message.clone()
+                };
+                lines.push(Line::from(vec![
+                    Span::styled("    !! ", Style::default().fg(Color::Red)),
+                    Span::styled(msg_short, Style::default().fg(Color::Red)),
+                    Span::styled(
+                        format!(" → {} ({retry_str})", err.category),
+                        Style::default().fg(Color::DarkGray),
+                    ),
+                ]));
+            }
         }
 
         if lines.is_empty() {
@@ -197,6 +221,42 @@ mod tests {
         let lines = panel.build_lines();
         // Should have header line + agent lines
         assert!(lines.len() >= 2);
+    }
+
+    fn state_with_errors() -> DashboardState {
+        let input = include_str!("../../tests/fixtures/sample_hooks/error_events.jsonl");
+        let result = hook_parser::parse_hook_events(input);
+        let mut state = DashboardState::default();
+        state.update_from_events(&result.events);
+        state
+    }
+
+    #[test]
+    fn build_lines_shows_error_summary() {
+        let state = state_with_errors();
+        let panel = AgentPanel::new(&state);
+        let lines = panel.build_lines();
+        // Should have agent line + error summary line
+        assert!(lines.len() >= 2);
+        let error_line = lines.iter().find(|l| {
+            l.spans
+                .iter()
+                .any(|s| s.content.contains("!!"))
+        });
+        assert!(error_line.is_some(), "should have error summary line");
+    }
+
+    #[test]
+    fn error_summary_shows_category() {
+        let state = state_with_errors();
+        let panel = AgentPanel::new(&state);
+        let lines = panel.build_lines();
+        let has_category = lines.iter().any(|l| {
+            l.spans
+                .iter()
+                .any(|s| s.content.contains("Network") || s.content.contains("Permission"))
+        });
+        assert!(has_category, "error summary should show category");
     }
 
     #[test]

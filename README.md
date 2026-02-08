@@ -243,7 +243,6 @@ src/
     help.rs            Help overlay popup
   analysis/
     rules.rs           Error pattern matching rules
-    api.rs             Optional AI analysis (feature: ai-analysis)
 ```
 
 ## Dependencies
@@ -260,7 +259,6 @@ src/
 | `chrono` | 0.4 | Timestamp parsing with serde support |
 | `anyhow` + `thiserror` | 1 / 2 | Error handling |
 | `tracing` | 0.1 | Structured logging |
-| `reqwest` | 0.12 | HTTP client (optional, feature: `ai-analysis`) |
 
 ## Development
 

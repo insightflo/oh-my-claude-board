@@ -98,7 +98,7 @@ fn gantt_shows_agent_names() {
 fn detail_shows_task_fields() {
     let state = full_state();
     let task = &state.phases[0].tasks[0];
-    let widget = DetailWidget::new(DetailContent::Task(task, &state.phases[0].name), true);
+    let widget = DetailWidget::new(DetailContent::Task(task, &state.phases[0].name, vec![]), true);
     let area = Rect::new(0, 0, 50, 15);
     let mut buf = Buffer::empty(area);
     widget.render(area, &mut buf);
@@ -116,7 +116,7 @@ fn detail_shows_blocked_by() {
     let task = &state.phases[1].tasks[0];
     assert!(!task.blocked_by.is_empty());
 
-    let widget = DetailWidget::new(DetailContent::Task(task, &state.phases[1].name), true);
+    let widget = DetailWidget::new(DetailContent::Task(task, &state.phases[1].name, vec![]), true);
     let area = Rect::new(0, 0, 50, 15);
     let mut buf = Buffer::empty(area);
     widget.render(area, &mut buf);
@@ -286,7 +286,7 @@ fn status_representation_consistent() {
         .find(|t| t.status == TaskStatus::Completed)
         .unwrap();
     let detail = DetailWidget::new(
-        DetailContent::Task(completed_task, &state.phases[0].name),
+        DetailContent::Task(completed_task, &state.phases[0].name, vec![]),
         true,
     );
     let detail_area = Rect::new(0, 0, 50, 15);

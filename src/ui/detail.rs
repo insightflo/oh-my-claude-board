@@ -10,13 +10,13 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Widget, Wrap},
 };
 
-use crate::data::state::DashboardState;
+use crate::data::state::{DashboardState, ErrorRecord};
 use crate::data::tasks_parser::{ParsedPhase, ParsedTask, TaskStatus};
 
 /// What the detail panel is showing
 pub enum DetailContent<'a> {
     Phase(&'a ParsedPhase),
-    Task(&'a ParsedTask, &'a str), // task + phase name
+    Task(&'a ParsedTask, &'a str, Vec<&'a ErrorRecord>), // task + phase name + errors
     None,
 }
 
@@ -39,7 +39,15 @@ impl<'a> DetailWidget<'a> {
     ) -> Self {
         let content = if let Some((pi, ti)) = selected_task {
             let phase = &state.phases[pi];
-            DetailContent::Task(&phase.tasks[ti], &phase.name)
+            let task = &phase.tasks[ti];
+            let errors: Vec<&ErrorRecord> = state
+                .recent_errors
+                .iter()
+                .filter(|e| e.task_id == task.id)
+                .rev()
+                .take(3)
+                .collect();
+            DetailContent::Task(task, &phase.name, errors)
         } else {
             // Check if a phase header is selected
             let mut idx = 0;
@@ -98,7 +106,7 @@ impl<'a> DetailWidget<'a> {
                     ]),
                 ]
             }
-            DetailContent::Task(task, phase_name) => {
+            DetailContent::Task(task, phase_name, errors) => {
                 let status_str = format!("{:?}", task.status);
                 let status_color = match task.status {
                     TaskStatus::Completed => Color::Green,
@@ -147,6 +155,50 @@ impl<'a> DetailWidget<'a> {
                             Style::default().fg(Color::Magenta),
                         ),
                     ]));
+                }
+
+                if !task.body.is_empty() {
+                    lines.push(Line::raw(""));
+                    for body_line in task.body.lines() {
+                        lines.push(Line::raw(body_line.to_string()));
+                    }
+                }
+
+                if !errors.is_empty() {
+                    lines.push(Line::raw(""));
+                    lines.push(Line::styled(
+                        "Errors:",
+                        Style::default()
+                            .fg(Color::Red)
+                            .add_modifier(Modifier::BOLD),
+                    ));
+                    for err in errors {
+                        let msg_short = if err.message.len() > 50 {
+                            format!("{}...", &err.message[..47])
+                        } else {
+                            err.message.clone()
+                        };
+                        lines.push(Line::from(vec![
+                            Span::styled("  !! ", Style::default().fg(Color::Red)),
+                            Span::styled(msg_short, Style::default().fg(Color::White)),
+                        ]));
+                        let retry_str = if err.retryable {
+                            "Retry"
+                        } else {
+                            "No retry"
+                        };
+                        lines.push(Line::from(vec![
+                            Span::styled("     ", Style::default()),
+                            Span::styled(
+                                format!("{}", err.category),
+                                Style::default().fg(Color::Yellow),
+                            ),
+                            Span::styled(
+                                format!(" | {retry_str} | {}", err.suggestion),
+                                Style::default().fg(Color::DarkGray),
+                            ),
+                        ]));
+                    }
                 }
 
                 lines
@@ -206,7 +258,7 @@ mod tests {
     fn detail_task_renders() {
         let state = sample_state();
         let task = &state.phases[0].tasks[0];
-        let widget = DetailWidget::new(DetailContent::Task(task, "Setup"), true);
+        let widget = DetailWidget::new(DetailContent::Task(task, "Setup", vec![]), true);
         let area = Rect::new(0, 0, 40, 10);
         let mut buf = Buffer::empty(area);
         widget.render(area, &mut buf);
@@ -237,12 +289,59 @@ mod tests {
     }
 
     #[test]
+    fn task_with_errors_shows_error_section() {
+        use crate::analysis::rules::ErrorCategory;
+        use crate::data::state::ErrorRecord;
+        use chrono::Utc;
+
+        let state = sample_state();
+        let task = &state.phases[0].tasks[0];
+        let err = ErrorRecord {
+            agent_id: "test-agent".to_string(),
+            task_id: task.id.clone(),
+            message: "permission denied: /etc/shadow".to_string(),
+            category: ErrorCategory::Permission,
+            retryable: false,
+            suggestion: "Check file permissions",
+            timestamp: Utc::now(),
+        };
+        let widget =
+            DetailWidget::new(DetailContent::Task(task, "Setup", vec![&err]), false);
+        let lines = widget.build_lines();
+        let has_errors_header = lines
+            .iter()
+            .any(|l| l.spans.iter().any(|s| s.content.contains("Errors")));
+        assert!(has_errors_header, "should show Errors header");
+        let has_permission = lines
+            .iter()
+            .any(|l| l.spans.iter().any(|s| s.content.contains("Permission")));
+        assert!(has_permission, "should show Permission category");
+    }
+
+    #[test]
+    fn from_selection_with_errors() {
+        use crate::data::hook_parser;
+
+        let tasks_input = include_str!("../../tests/fixtures/sample_tasks.md");
+        let mut state = DashboardState::from_tasks_content(tasks_input).unwrap();
+        let hooks_input = include_str!("../../tests/fixtures/sample_hooks/error_events.jsonl");
+        let result = hook_parser::parse_hook_events(hooks_input);
+        state.update_from_events(&result.events);
+
+        // error_events.jsonl targets task "P1-R3-T1" which may not be in sample_tasks.md
+        // Verify no panic when task has no matching errors
+        let widget = DetailWidget::from_selection(&state, Some((0, 0)), 1, true);
+        let lines = widget.build_lines();
+        assert!(lines.len() >= 4);
+    }
+
+    #[test]
     fn task_with_deps_shows_deps() {
         let state = sample_state();
         // Phase 1, task 0 has blocked_by
         let task = &state.phases[1].tasks[0];
         assert!(!task.blocked_by.is_empty());
-        let widget = DetailWidget::new(DetailContent::Task(task, "Data Engine"), false);
+        let widget = DetailWidget::new(DetailContent::Task(task, "Data Engine", vec![]), false);
         let lines = widget.build_lines();
         let has_deps = lines.iter().any(|l| {
             l.spans
@@ -250,5 +349,20 @@ mod tests {
                 .any(|s| s.content.contains("Deps") || s.content.contains("P0-T0.1"))
         });
         assert!(has_deps);
+    }
+
+    #[test]
+    fn task_with_body_shows_body_lines() {
+        let state = sample_state();
+        let task = &state.phases[0].tasks[0];
+        assert!(!task.body.is_empty(), "fixture task should have body");
+        let widget = DetailWidget::new(DetailContent::Task(task, "Setup", vec![]), false);
+        let lines = widget.build_lines();
+        let has_spec = lines.iter().any(|l| {
+            l.spans
+                .iter()
+                .any(|s| s.content.contains("스펙"))
+        });
+        assert!(has_spec, "detail should show body with spec line");
     }
 }
