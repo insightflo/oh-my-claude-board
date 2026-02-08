@@ -318,6 +318,70 @@ fn layout_all_panels_have_area() {
     );
 }
 
+// ===== Agent panel: live events.jsonl tool events show Running =====
+
+#[test]
+fn agent_panel_shows_running_for_tool_events() {
+    // Simulate the actual events.jsonl format from event-logger.js
+    let jsonl = r#"{"event_type":"tool_start","timestamp":"2026-02-08T01:43:12.481Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Edit"}
+{"event_type":"tool_end","timestamp":"2026-02-08T01:43:13.000Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Edit"}
+{"event_type":"tool_start","timestamp":"2026-02-08T01:43:19.586Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Bash"}
+"#;
+    let result = hook_parser::parse_hook_events(jsonl);
+    let mut state = DashboardState::default();
+    state.update_from_events(&result.events);
+
+    let panel = AgentPanel::new(&state);
+    let area = Rect::new(0, 0, 60, 10);
+    let mut buf = Buffer::empty(area);
+    panel.render(area, &mut buf);
+
+    let text = buffer_text(&buf);
+    // Agent "main" should appear with ">>" (Running) and "Bash" tool
+    assert!(text.contains("main"), "Agent 'main' should appear");
+    assert!(text.contains(">>"), "Should show Running status (>>)");
+    assert!(text.contains("Bash"), "Should show current tool 'Bash'");
+}
+
+#[test]
+fn agent_panel_shows_idle_after_tool_end() {
+    let jsonl = r#"{"event_type":"tool_start","timestamp":"2026-02-08T01:43:12.481Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Edit"}
+{"event_type":"tool_end","timestamp":"2026-02-08T01:43:13.000Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Edit"}
+"#;
+    let result = hook_parser::parse_hook_events(jsonl);
+    let mut state = DashboardState::default();
+    state.update_from_events(&result.events);
+
+    let panel = AgentPanel::new(&state);
+    let area = Rect::new(0, 0, 60, 10);
+    let mut buf = Buffer::empty(area);
+    panel.render(area, &mut buf);
+
+    let text = buffer_text(&buf);
+    assert!(text.contains("main"), "Agent 'main' should appear");
+    assert!(text.contains("--"), "Should show Idle status (--)");
+}
+
+#[test]
+fn reload_from_events_no_duplicate_event_count() {
+    let jsonl = r#"{"event_type":"tool_start","timestamp":"2026-02-08T01:43:12.481Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Edit"}
+"#;
+    let result = hook_parser::parse_hook_events(jsonl);
+
+    let mut state = DashboardState::default();
+    state.update_from_events(&result.events);
+    assert_eq!(state.agents.get("main").unwrap().event_count, 1);
+
+    // Simulate file change: reload resets, not accumulates
+    let jsonl2 = r#"{"event_type":"tool_start","timestamp":"2026-02-08T01:43:12.481Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Edit"}
+{"event_type":"tool_start","timestamp":"2026-02-08T01:43:19.000Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Bash"}
+"#;
+    let result2 = hook_parser::parse_hook_events(jsonl2);
+    state.reload_from_events(&result2.events);
+    // Should be 2, not 3
+    assert_eq!(state.agents.get("main").unwrap().event_count, 2);
+}
+
 // ===== Full render pipeline: all panels render without panic =====
 
 #[test]

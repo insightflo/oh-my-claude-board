@@ -167,10 +167,15 @@ impl DashboardState {
                     agent.current_tool = None;
                 }
                 EventType::ToolStart => {
+                    agent.status = AgentStatus::Running;
                     agent.current_tool = event.tool_name.clone();
                 }
                 EventType::ToolEnd => {
                     agent.current_tool = None;
+                    // Return to Idle only if no active task (subagent)
+                    if agent.current_task.is_none() {
+                        agent.status = AgentStatus::Idle;
+                    }
                 }
                 EventType::Error => {
                     agent.status = AgentStatus::Error;
@@ -194,6 +199,16 @@ impl DashboardState {
                 }
             }
         }
+    }
+
+    /// Clear agent state and re-process all events from scratch.
+    /// Use this when a hook events file is re-read entirely (avoids duplicate accumulation).
+    pub fn reload_from_events(&mut self, events: &[HookEvent]) {
+        self.agents.clear();
+        self.task_times.clear();
+        self.task_agents.clear();
+        self.recent_errors.clear();
+        self.update_from_events(events);
     }
 
     /// Load hook events from a directory and update agent states
@@ -382,6 +397,160 @@ mod tests {
         state.reload_tasks(content2).unwrap();
         assert_eq!(state.completed_tasks, 2);
         assert!((state.overall_progress - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn tool_start_sets_running_status() {
+        let mut state = DashboardState::default();
+        let events = vec![HookEvent {
+            event_type: EventType::ToolStart,
+            timestamp: Utc::now(),
+            agent_id: "main".to_string(),
+            task_id: "unknown".to_string(),
+            session_id: "sess-1".to_string(),
+            tool_name: Some("Edit".to_string()),
+            error_message: None,
+        }];
+        state.update_from_events(&events);
+
+        let agent = state.agents.get("main").unwrap();
+        assert_eq!(agent.status, AgentStatus::Running);
+        assert_eq!(agent.current_tool.as_deref(), Some("Edit"));
+    }
+
+    #[test]
+    fn tool_end_returns_to_idle_when_no_task() {
+        let mut state = DashboardState::default();
+        let events = vec![
+            HookEvent {
+                event_type: EventType::ToolStart,
+                timestamp: Utc::now(),
+                agent_id: "main".to_string(),
+                task_id: "unknown".to_string(),
+                session_id: "sess-1".to_string(),
+                tool_name: Some("Edit".to_string()),
+                error_message: None,
+            },
+            HookEvent {
+                event_type: EventType::ToolEnd,
+                timestamp: Utc::now(),
+                agent_id: "main".to_string(),
+                task_id: "unknown".to_string(),
+                session_id: "sess-1".to_string(),
+                tool_name: Some("Edit".to_string()),
+                error_message: None,
+            },
+        ];
+        state.update_from_events(&events);
+
+        let agent = state.agents.get("main").unwrap();
+        assert_eq!(agent.status, AgentStatus::Idle);
+        assert!(agent.current_tool.is_none());
+    }
+
+    #[test]
+    fn tool_end_stays_running_with_active_task() {
+        let mut state = DashboardState::default();
+        let events = vec![
+            HookEvent {
+                event_type: EventType::AgentStart,
+                timestamp: Utc::now(),
+                agent_id: "backend".to_string(),
+                task_id: "P1-T1".to_string(),
+                session_id: "sess-1".to_string(),
+                tool_name: None,
+                error_message: None,
+            },
+            HookEvent {
+                event_type: EventType::ToolStart,
+                timestamp: Utc::now(),
+                agent_id: "backend".to_string(),
+                task_id: "P1-T1".to_string(),
+                session_id: "sess-1".to_string(),
+                tool_name: Some("Edit".to_string()),
+                error_message: None,
+            },
+            HookEvent {
+                event_type: EventType::ToolEnd,
+                timestamp: Utc::now(),
+                agent_id: "backend".to_string(),
+                task_id: "P1-T1".to_string(),
+                session_id: "sess-1".to_string(),
+                tool_name: Some("Edit".to_string()),
+                error_message: None,
+            },
+        ];
+        state.update_from_events(&events);
+
+        let agent = state.agents.get("backend").unwrap();
+        // Should stay Running because there's an active task
+        assert_eq!(agent.status, AgentStatus::Running);
+        assert_eq!(agent.current_task.as_deref(), Some("P1-T1"));
+    }
+
+    #[test]
+    fn reload_from_events_resets_state() {
+        let mut state = DashboardState::default();
+
+        // Initial load
+        let events = vec![HookEvent {
+            event_type: EventType::ToolStart,
+            timestamp: Utc::now(),
+            agent_id: "main".to_string(),
+            task_id: "unknown".to_string(),
+            session_id: "sess-1".to_string(),
+            tool_name: Some("Edit".to_string()),
+            error_message: None,
+        }];
+        state.update_from_events(&events);
+        assert_eq!(state.agents.get("main").unwrap().event_count, 1);
+
+        // Simulate file re-read: reload resets, not accumulates
+        let events2 = vec![
+            HookEvent {
+                event_type: EventType::ToolStart,
+                timestamp: Utc::now(),
+                agent_id: "main".to_string(),
+                task_id: "unknown".to_string(),
+                session_id: "sess-1".to_string(),
+                tool_name: Some("Edit".to_string()),
+                error_message: None,
+            },
+            HookEvent {
+                event_type: EventType::ToolStart,
+                timestamp: Utc::now(),
+                agent_id: "main".to_string(),
+                task_id: "unknown".to_string(),
+                session_id: "sess-1".to_string(),
+                tool_name: Some("Bash".to_string()),
+                error_message: None,
+            },
+        ];
+        state.reload_from_events(&events2);
+
+        // Should be 2, not 3 (no accumulation)
+        assert_eq!(state.agents.get("main").unwrap().event_count, 2);
+        assert_eq!(state.agents.get("main").unwrap().current_tool.as_deref(), Some("Bash"));
+    }
+
+    #[test]
+    fn simulated_live_events_jsonl() {
+        // Simulate the actual events.jsonl format from event-logger.js
+        let jsonl = r#"{"event_type":"tool_start","timestamp":"2026-02-08T01:43:12.481Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Edit"}
+{"event_type":"tool_end","timestamp":"2026-02-08T01:43:13.000Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Edit"}
+{"event_type":"tool_start","timestamp":"2026-02-08T01:43:19.586Z","agent_id":"main","task_id":"unknown","session_id":"sess-test","tool_name":"Bash"}
+"#;
+        let result = hook_parser::parse_hook_events(jsonl);
+        assert_eq!(result.events.len(), 3);
+
+        let mut state = DashboardState::default();
+        state.update_from_events(&result.events);
+
+        let agent = state.agents.get("main").unwrap();
+        // Last event is tool_start(Bash), so should be Running with Bash
+        assert_eq!(agent.status, AgentStatus::Running);
+        assert_eq!(agent.current_tool.as_deref(), Some("Bash"));
+        assert_eq!(agent.event_count, 3);
     }
 
     #[test]

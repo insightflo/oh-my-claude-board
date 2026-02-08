@@ -20,6 +20,7 @@ use oh_my_claude_board::ui::detail::DetailWidget;
 use oh_my_claude_board::ui::gantt::GanttWidget;
 use oh_my_claude_board::ui::help::HelpOverlay;
 use oh_my_claude_board::ui::layout::{DashboardLayout, FocusedPane};
+use oh_my_claude_board::ui::retry_modal::RetryModal;
 use oh_my_claude_board::ui::statusbar::StatusBar;
 
 /// Claude Code orchestration TUI dashboard
@@ -137,7 +138,9 @@ fn run_tui(tasks_path: &str, hooks_dir: Option<&str>, events_dir: Option<&str>) 
         let _ = dashboard.load_hook_events(&events_path);
     }
 
-    let mut app = App::new().with_dashboard(dashboard);
+    let mut app = App::new()
+        .with_dashboard(dashboard)
+        .with_tasks_path(PathBuf::from(tasks_path));
     let mut watch_config = WatchConfig::new(PathBuf::from(tasks_path), hooks_path);
     if events_path.is_dir() {
         watch_config = watch_config.with_events_dir(events_path);
@@ -227,6 +230,18 @@ fn run_loop(
             if app.show_help {
                 frame.render_widget(HelpOverlay, area);
             }
+
+            // Retry modal (on top if active)
+            if app.show_retry_modal {
+                if let Some(ref target) = app.retry_target {
+                    let modal = RetryModal {
+                        task_id: target.task_id.clone(),
+                        task_name: target.task_name.clone(),
+                        retryable: target.retryable,
+                    };
+                    frame.render_widget(modal, area);
+                }
+            }
         })?;
 
         // Process file watcher events (non-blocking)
@@ -239,16 +254,34 @@ fn run_loop(
         // Handle keyboard events
         if let Some(event) = poll_event(tick_rate)? {
             match event {
-                AppEvent::Key(key) => match key_to_action(key) {
-                    Action::Quit => app.quit(),
-                    Action::MoveDown => app.move_down(),
-                    Action::MoveUp => app.move_up(),
-                    Action::ToggleFocus => app.toggle_focus(),
-                    Action::ToggleHelp => app.toggle_help(),
-                    Action::ToggleCollapse => app.toggle_collapse(),
-                    Action::ToggleView => app.toggle_view(),
-                    Action::None => {}
-                },
+                AppEvent::Key(key) => {
+                    if app.show_retry_modal {
+                        // Modal takes priority: only y/n/q/Esc
+                        let retryable = app
+                            .retry_target
+                            .as_ref()
+                            .is_some_and(|t| t.retryable);
+                        match key_to_action(key) {
+                            Action::Confirm if retryable => app.confirm_retry(),
+                            Action::Cancel | Action::Quit => app.cancel_retry(),
+                            // Non-retryable: any key closes
+                            _ if !retryable => app.cancel_retry(),
+                            _ => {}
+                        }
+                    } else {
+                        match key_to_action(key) {
+                            Action::Quit => app.quit(),
+                            Action::MoveDown => app.move_down(),
+                            Action::MoveUp => app.move_up(),
+                            Action::ToggleFocus => app.toggle_focus(),
+                            Action::ToggleHelp => app.toggle_help(),
+                            Action::ToggleCollapse => app.toggle_collapse(),
+                            Action::ToggleView => app.toggle_view(),
+                            Action::RetryRequest => app.open_retry_modal(),
+                            Action::Confirm | Action::Cancel | Action::None => {}
+                        }
+                    }
+                }
                 AppEvent::Resize(_, _) => {} // terminal auto-handles resize
                 AppEvent::FileChanged(change) => app.handle_file_change(&change),
                 AppEvent::Tick => {}

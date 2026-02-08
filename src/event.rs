@@ -50,6 +50,9 @@ pub enum Action {
     ToggleHelp,
     ToggleCollapse,
     ToggleView,
+    RetryRequest,
+    Confirm,
+    Cancel,
     None,
 }
 
@@ -65,6 +68,9 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char(' ') => Action::ToggleCollapse,
         KeyCode::Char('v' | 'ㅍ') => Action::ToggleView,
+        KeyCode::Char('r' | 'ㄱ') => Action::RetryRequest,
+        KeyCode::Char('y') => Action::Confirm,
+        KeyCode::Char('n') => Action::Cancel,
         _ => Action::None,
     }
 }
@@ -152,6 +158,38 @@ mod tests {
         assert_eq!(
             key_to_action(make_key(KeyCode::Char('?'), KeyModifiers::NONE)),
             Action::ToggleHelp
+        );
+    }
+
+    #[test]
+    fn retry_request_on_r() {
+        assert_eq!(
+            key_to_action(make_key(KeyCode::Char('r'), KeyModifiers::NONE)),
+            Action::RetryRequest
+        );
+    }
+
+    #[test]
+    fn retry_request_on_korean_r() {
+        assert_eq!(
+            key_to_action(make_key(KeyCode::Char('ㄱ'), KeyModifiers::NONE)),
+            Action::RetryRequest
+        );
+    }
+
+    #[test]
+    fn confirm_on_y() {
+        assert_eq!(
+            key_to_action(make_key(KeyCode::Char('y'), KeyModifiers::NONE)),
+            Action::Confirm
+        );
+    }
+
+    #[test]
+    fn cancel_on_n() {
+        assert_eq!(
+            key_to_action(make_key(KeyCode::Char('n'), KeyModifiers::NONE)),
+            Action::Cancel
         );
     }
 
