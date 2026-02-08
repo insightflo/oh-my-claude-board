@@ -168,10 +168,7 @@ impl<'a> GanttWidget<'a> {
             let bar = progress_bar(progress, 6);
 
             let header = Line::from(vec![
-                Span::styled(
-                    format!(" {arrow} "),
-                    Style::default().fg(Color::Cyan),
-                ),
+                Span::styled(format!(" {arrow} "), Style::default().fg(Color::Cyan)),
                 Span::styled(
                     format!("{} ", phase.id),
                     Style::default()
@@ -602,8 +599,8 @@ mod tests {
             ..Default::default()
         };
         gs.collapsed.insert(0); // collapse phase 0
-        // selected=0 is phase 0 header
-        // selected=1 is phase 1 header (tasks of phase 0 hidden)
+                                // selected=0 is phase 0 header
+                                // selected=1 is phase 1 header (tasks of phase 0 hidden)
         assert!(gs.selected_task(&state).is_none());
         assert_eq!(gs.selected_phase_index(&state), Some(1));
 
@@ -646,10 +643,7 @@ mod tests {
     #[test]
     fn progress_bar_half() {
         let bar = progress_bar(0.5, 6);
-        assert_eq!(
-            bar,
-            "\u{2588}\u{2588}\u{2588}\u{2591}\u{2591}\u{2591}"
-        );
+        assert_eq!(bar, "\u{2588}\u{2588}\u{2588}\u{2591}\u{2591}\u{2591}");
     }
 
     #[test]

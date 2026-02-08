@@ -73,11 +73,7 @@ fn gantt_shows_task_id_and_status() {
     let text = buffer_text(&buf);
     for phase in &state.phases {
         for task in &phase.tasks {
-            assert!(
-                text.contains(&task.id),
-                "Missing task_id: {}",
-                task.id
-            );
+            assert!(text.contains(&task.id), "Missing task_id: {}", task.id);
         }
     }
 }
@@ -193,12 +189,8 @@ fn gantt_selection_updates_detail() {
     assert_eq!(selected, Some((0, 0)));
 
     // Verify detail can render with this selection
-    let detail = DetailWidget::from_selection(
-        &app.dashboard,
-        selected,
-        app.gantt_state.selected,
-        true,
-    );
+    let detail =
+        DetailWidget::from_selection(&app.dashboard, selected, app.gantt_state.selected, true);
     let area = Rect::new(0, 0, 50, 15);
     let mut buf = Buffer::empty(area);
     detail.render(area, &mut buf);

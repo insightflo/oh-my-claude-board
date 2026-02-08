@@ -128,10 +128,7 @@ impl DashboardState {
                 EventType::AgentStart => {
                     agent.status = AgentStatus::Running;
                     agent.current_task = Some(event.task_id.clone());
-                    let timing = self
-                        .task_times
-                        .entry(event.task_id.clone())
-                        .or_default();
+                    let timing = self.task_times.entry(event.task_id.clone()).or_default();
                     if timing.started_at.is_none() {
                         timing.started_at = Some(event.timestamp);
                     }
